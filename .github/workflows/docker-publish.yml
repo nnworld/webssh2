@@ -22,23 +22,6 @@ on:
   push:
     branches:
       - main
-    # Only rebuild when files that actually affect the image change.
-    # Workflow-only and docs-only commits skip this build; `release:published`
-    # and `workflow_dispatch` are unaffected.
-    paths:
-      - 'Dockerfile'
-      - '.dockerignore'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'app/**'
-      - 'index.ts'
-      - 'types/**'
-      - 'scripts/**'
-      - 'tsconfig.json'
-      - 'tsconfig.build.json'
-      - 'LICENSE'
-      - 'README.md'
-      - '.github/workflows/docker-publish.yml'
 
 concurrency:
   group: image-publish
@@ -54,12 +37,6 @@ jobs:
     permissions:
       contents: write
       packages: write
-      # Required for github/codeql-action/upload-sarif to push the
-      # Trivy image-scan SARIF into the repo's Security tab. Without
-      # this, the upload step fails with "Resource not accessible by
-      # integration" and aborts the rest of the pipeline (smoke test
-      # and multi-arch push get skipped via default success() gating).
-      security-events: write
     env:
       DOCKERHUB_USER: ${{ secrets.DOCKER_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKER_TOKEN }}
@@ -67,7 +44,7 @@ jobs:
       - name: Check required secrets
         if: ${{ env.DOCKERHUB_USER == '' || env.DOCKERHUB_TOKEN == '' }}
         run: |
-          echo '::error::DOCKER_USERNAME and DOCKER_TOKEN secrets are required' >&2
+          echo '::error::DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets are required' >&2
           exit 1
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -161,7 +138,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.event_name == 'release' && github.event.action == 'published' }}
             type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.publish_latest == 'true' }}
             type=raw,value=main,enable=${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'release' && github.event.action == 'published') }}
-            type=raw,value=${{ steps.release_meta.outputs.semver_full }},priority=900,enable=${{ steps.release_meta.outputs.has_release == 'true' }}
+            type=raw,value=${{ steps.release_meta.outputs.semver_full }},enable=${{ steps.release_meta.outputs.has_release == 'true' }}
             type=raw,value=${{ steps.release_meta.outputs.semver_minor }},enable=${{ steps.release_meta.outputs.has_release == 'true' }}
             type=raw,value=${{ steps.release_meta.outputs.semver_major }},enable=${{ steps.release_meta.outputs.has_release == 'true' }}
             type=ref,event=branch,enable=${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref != 'refs/heads/main' }}
@@ -189,12 +166,6 @@ jobs:
           exit-code: '1'
           cache: true
           trivyignores: .trivyignore
-          # Keep --severity CRITICAL,HIGH applied to BOTH SARIF generation
-          # and exit-code evaluation. Without this, trivy-action unsets
-          # TRIVY_SEVERITY in sarif mode (to capture all severities), which
-          # silently disables our gate and lets MEDIUM/LOW findings fail
-          # the publish.
-          limit-severities-for-sarif: 'true'
 
       - name: Upload SARIF
         if: always()
