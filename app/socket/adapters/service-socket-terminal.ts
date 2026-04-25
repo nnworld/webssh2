@@ -46,6 +46,8 @@ export class ServiceSocketTerminal {
 
       this.setupShellDataFlow(shellResult)
       this.sendInitialCommand(shellResult)
+      this.sendInitialSharedTmux(shellResult)
+      this.sendInitialSharedScreen(shellResult)
       this.context.debug('Terminal created successfully')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terminal setup failed'
@@ -151,6 +153,24 @@ export class ServiceSocketTerminal {
       this.context.debug('Sent initial command from URL:', cmd)
     }
   }
+
+    private sendInitialSharedTmux(stream: SSH2Stream): void {
+        const req = this.context.socket.request as { session?: Record<string, unknown> }
+        const shared = req.session?.['initialSharedTmux']
+        if (typeof shared === 'string' && shared !== '') {
+            stream.write(`tmux attach -t ${shared}` + '\n')
+            this.context.debug('Sent shared tmux from param:', shared)
+        }
+    }
+
+    private sendInitialSharedScreen(stream: SSH2Stream): void {
+        const req = this.context.socket.request as { session?: Record<string, unknown> }
+        const shared = req.session?.['initialSharedScreen']
+        if (typeof shared === 'string' && shared !== '') {
+            stream.write(`screen -x ${shared}` + '\n')
+            this.context.debug('Sent shared screen from param:', shared)
+        }
+    }
 
   private hasActiveSession(): boolean {
     if (this.context.state.sessionId === null || this.context.state.connectionId === null) {

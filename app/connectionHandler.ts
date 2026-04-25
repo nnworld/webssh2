@@ -120,6 +120,16 @@ export default async function handleConnection(
       (req.session as Record<string, unknown>)['initialCommand'] = cmdParam
   }
 
+    const sharedT = req.query['shared_t']
+    if (typeof sharedT === 'string' && sharedT !== '') {
+        (req.session as Record<string, unknown>)['initialSharedTmux'] = sharedT
+    }
+
+    const sharedS = req.query['shared_s']
+    if (typeof sharedS === 'string' && sharedS !== '') {
+        (req.session as Record<string, unknown>)['initialSharedScreen'] = sharedS
+    }
+
   const s = req.session
   if (hasSessionCredentials(s) && s.sshCredentials != null) {
     const creds = s.sshCredentials
