@@ -22,7 +22,6 @@ concurrency:
 # minimum it needs (least privilege per Sonar githubactions:S8233).
 permissions:
   contents: read
-  packages: write
 
 jobs:
   guard:
