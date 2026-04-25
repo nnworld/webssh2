@@ -115,6 +115,11 @@ export default async function handleConnection(
     })
   }
 
+  const cmdParam = req.query['cmd']
+  if (typeof cmdParam === 'string' && cmdParam !== '') {
+      (req.session as Record<string, unknown>)['initialCommand'] = cmdParam
+  }
+
   const s = req.session
   if (hasSessionCredentials(s) && s.sshCredentials != null) {
     const creds = s.sshCredentials

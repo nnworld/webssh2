@@ -1,0 +1,450 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    WebSSH2 项目 - 关键文件总结表                              ║
+║                                                                                ║
+║ 按功能和优先级分类，标注文件路径、主要用途和核心导出                          ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 1: 启动和初始化 (MUST READ FIRST)
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /index.ts
+用途: 项目主入口
+核心导出: initializeServerAsync()
+关键行为:
+- 导入 initializeServerAsync from app/app.js
+- 异步初始化服务器
+- 处理启动错误
+重要: 这是服务启动的第一行代码
+
+📄 /app/app.ts
+用途: Express 应用创建和整体初始化
+核心导出:
+- createAppAsync(config) - Express app 创建
+- initializeServerAsync() - 完整服务器初始化
+关键流程:
+1. 加载配置 (getConfig)
+2. 初始化 DI 容器 (initializeGlobalContainer)
+3. 创建 Express 应用
+4. 应用中间件
+5. 配置 Socket.IO
+6. 启动 HTTP 服务器
+重要: 核心业务流程的协调者
+
+📄 /app/config.ts & /app/config/*
+用途: 配置管理和加载
+文件清单:
+- config-loader.ts - 配置加载器
+- config-processor.ts - 配置处理
+- default-config.ts - 默认配置
+- env-parser.ts - 环境变量解析
+- config-schema.ts - 配置验证模式
+核心: 从环境变量、配置文件加载应用配置
+
+📄 /app/server.ts
+用途: HTTP 服务器创建和启动
+核心函数:
+- createServer(app) - 创建 HTTP 服务器
+- startServer(server, config) - 启动监听
+重要: 网络通信的基础层
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 2: WebSocket 和 Socket.IO 配置
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/io.ts
+用途: Socket.IO 服务器配置
+核心函数:
+- configureSocketIO(server, sessionMiddleware, config) - SSH Socket.IO
+- configureTelnetNamespace(server, sessionMiddleware, config) - Telnet
+功能:
+- 配置 CORS
+- 整合会话中间件
+- 设置 ping 参数
+重要: Socket.IO 配置的中心点
+
+📄 /app/socket-v2.ts
+用途: Socket.IO 连接处理初始化
+核心导出: default export (init 函数)
+签名: init(io, config, services, protocol)
+关键行为:
+- 监听 'connection' 事件
+- 为每个连接创建 ServiceSocketAdapter
+流程: Socket 连接 → ServiceSocketAdapter 创建 → 事件处理器设置
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 3: HTTP 路由和请求处理
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/routes/routes-v2.ts
+用途: Express 路由定义
+核心导出: createRoutesV2(config) → Router
+路由定义:
+- GET /ssh - SSH 登录页
+- GET /ssh/:host - 直接连接主机
+- GET /ssh/:host/:port - 指定端口连接
+- POST /ssh - POST 认证处理
+- GET /ssh/config - 获取 SSH 配置
+- GET /host/:host, /host/:host/:port - 自动连接
+重要: 定义所有 HTTP 端点
+
+📄 /app/connectionHandler.ts
+用途: HTTP 连接处理（HTML 模板渲染）
+核心导出: default export (handleConnection 函数)
+签名: handleConnection(req, res, opts) → Promise<void>
+关键功能:
+- 读取 client.htm 模板
+- 将配置注入 HTML
+- 返回渲染后的 HTML 给浏览器
+重要: 客户端 HTML 的生成点
+
+📄 /app/routes/handlers/ssh-handler.ts
+用途: SSH 路由处理逻辑（纯函数）
+导出的主要函数:
+- validateSshRouteCredentials(creds) - 验证凭证
+- processPostAuthRequest(body, query, config) - 处理 POST 认证
+- createAuthSessionUpdates(creds, conn) - 创建会话更新
+- validateConnectionParameters(params) - 验证连接参数
+- sanitizeCredentialsForLogging(creds) - 清理日志
+
+📄 /app/routes/handlers/ssh-config-handler.ts
+用途: SSH 配置响应生成
+核心导出: createSshConfigResponse()
+功能: 返回 SSH 配置给客户端
+
+📄 /app/routes/adapters/express-adapter.ts
+用途: Express 框架适配层
+导出的适配函数:
+- createRouteHandler() - 同步路由处理
+- asyncRouteHandler() - 异步路由处理
+- createErrorHandler() - 错误处理
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 4: Socket 事件处理（核心业务逻辑）
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/socket/adapters/service-socket-adapter.ts ⭐️ 非常重要
+用途: Socket.IO 主适配器，协调所有事件处理
+核心类: ServiceSocketAdapter
+构造函数参数: (socket, config, services, protocol='ssh')
+内部组件:
+- authPipeline: UnifiedAuthPipeline
+- auth: ServiceSocketAuthentication
+- terminal: ServiceSocketTerminal
+- sftp: ServiceSocketSftp
+- control: ServiceSocketControl
+- prompt: ServiceSocketPrompt
+关键方法:
+- setupEventHandlers() - 设置所有 Socket 事件监听
+- logSessionInit() - 记录会话初始化
+- emitHostKeyVerificationConfig() - 发送主机密钥验证配置
+流程: 每个 Socket 连接一个适配器实例
+
+📄 /app/socket/adapters/service-socket-authentication.ts
+用途: 认证事件处理
+核心类: ServiceSocketAuthentication
+关键方法:
+- checkInitialAuth() - 检查初始认证状态
+- requestAuthentication() - 请求认证
+- requestKeyboardInteractiveAuth() - 请求键盘交互认证
+- handleAuthentication(credentials) - 处理认证请求
+- handleKeyboardInteractiveResponse(responses) - 处理键盘交互响应
+- handleSSHKeyboardInteractive() - 处理 SSH 键盘交互提示
+事件:
+- 监听: 'authenticate' (AUTH)
+- 发送: 'authentication' (AUTH_SUCCESS), 'connection-error'
+
+📄 /app/socket/adapters/service-socket-terminal.ts
+用途: 终端事件处理
+核心类: ServiceSocketTerminal
+关键方法:
+- handleTerminal(settings) - 创建终端/shell
+- handleResize(dimensions) - 调整终端大小
+- handleData(data) - 处理用户输入
+- handleExec(request) - 执行 SSH 命令
+事件:
+- 监听: 'terminal', 'resize', 'data', 'exec'
+- 发送: 'data' (SSH 输出), 'ssherror'
+流程: 建立双向数据流 (Browser ←→ SSH Server)
+
+📄 /app/socket/adapters/service-socket-sftp.ts
+用途: SFTP 文件传输事件处理
+核心类: ServiceSocketSftp
+支持的操作: 列表、查询属性、创建目录、删除、上传、下载
+事件:
+- 监听: 'sftp-list', 'sftp-upload-start', etc.
+- 发送: 'sftp-directory', 'sftp-upload-ready', etc.
+
+📄 /app/socket/adapters/service-socket-control.ts
+用途: 控制消息处理
+核心类: ServiceSocketControl
+处理消息类型: close, keepalive, debug 等
+
+📄 /app/socket/adapters/service-socket-prompt.ts
+用途: 提示系统处理
+核心类: ServiceSocketPrompt
+支持的提示类型: input, confirm, notice, toast
+事件:
+- 监听: 'prompt-response'
+- 发送: 'prompt'
+
+📄 /app/constants/socket-events.ts
+用途: Socket 事件常量定义
+关键常量: SOCKET_EVENTS 对象
+包含所有客户端→服务器和服务器→客户端事件名称
+重要: Socket 事件的单一来源
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 5: 认证系统
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/auth/auth-pipeline.ts
+用途: 统一认证管道
+核心类: UnifiedAuthPipeline
+关键方法:
+- isAuthenticated() - 检查是否已认证
+- getCredentials() - 获取认证凭证
+- getAuthMethod() - 获取使用的认证方法
+- requiresAuthRequest() - 是否需要认证请求
+- authenticate(credentials) - 执行认证
+支持的认证方法:
+- Session 认证 (Cookie 会话)
+- Basic Auth (HTTP Basic)
+- POST 认证 (表单数据)
+- Manual 认证 (手动输入)
+
+📄 /app/auth/auth-utils.ts
+用途: 认证工具函数
+功能: 提取和处理认证参数
+
+📄 /app/auth/auth-method-policy.ts
+用途: 认证方法策略评估
+关键函数:
+- evaluateAuthMethodPolicy() - 评估是否允许某认证方法
+- isAuthMethodAllowed() - 检查方法是否被允许
+
+📄 /app/auth/providers/
+目录结构:
+- basic-auth.provider.ts - HTTP Basic 认证
+- post-auth.provider.ts - POST 表单认证
+- manual-auth.provider.ts - 手动输入认证
+用途: 各种认证方法的具体实现
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 6: 服务层（业务逻辑核心）
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/services/ssh/ssh-service.ts ⭐️ 核心 SSH 实现
+用途: SSH 连接管理的主要服务
+核心类: SSHServiceImpl
+关键方法:
+- connect(config) - 建立 SSH 连接
+- shell(sessionId, termConfig) - 打开 shell
+- exec(sessionId, command) - 执行命令
+- close(sessionId) - 关闭连接
+- getConnection(sessionId) - 获取连接
+依赖:
+- ssh2 库 (SSH 协议实现)
+- ConnectionPool (管理多个连接)
+- ConnectionLogger (记录连接事件)
+- AlgorithmCapture (捕获 SSH 算法协商)
+重要: SSH 连接的核心实现
+
+📄 /app/services/ssh/connection-pool.ts
+用途: SSH 连接池管理
+核心类: ConnectionPool
+功能: 管理活跃的 SSH 连接
+
+📄 /app/services/ssh/connection-handlers.ts
+用途: SSH 连接事件处理
+功能: 注册 SSH 连接生命周期事件处理
+
+📄 /app/services/ssh/exec-command.ts
+用途: SSH 远程命令执行
+核心函数: executeSshCommand()
+功能: 在远程 SSH 上执行命令
+
+📄 /app/services/ssh/algorithm-capture.ts & analyzer.ts
+用途: SSH 算法协商分析
+功能:
+- 捕获客户端和服务器支持的算法
+- 分析两端的兼容性
+- 生成诊断信息
+
+📄 /app/services/terminal/terminal-service.ts
+用途: 终端生命周期管理
+核心类: TerminalService
+关键方法:
+- create(config) - 创建新终端
+- resize(id, dimensions) - 调整大小
+- getTerminal(id) - 获取终端
+- write(id, data) - 写入数据
+- close(id) - 关闭终端
+
+📄 /app/services/sftp/sftp-service.ts
+用途: SFTP 文件操作服务
+核心类: SftpService
+功能: 管理 SFTP 会话和文件操作
+
+📄 /app/services/auth/auth-service.ts
+用途: 认证服务
+关键方法: 认证方法的统一接口
+
+📄 /app/services/host-key/host-key-service.ts
+用途: SSH 主机密钥管理
+功能:
+- 存储和验证主机密钥
+- TOFU (Trust On First Use) 实现
+
+📄 /app/services/container.ts
+用途: 依赖注入容器
+核心: 所有服务的注册和依赖管理
+
+📄 /app/services/setup.ts
+用途: 服务初始化
+核心函数: initializeGlobalContainer(config)
+功能: 创建 DI 容器并初始化所有服务
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 7: 类型定义和数据合约
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/types/contracts/v1/socket.ts
+用途: Socket.IO 消息类型定义
+包含:
+- ClientToServerEvents (客户端→服务器)
+- ServerToClientEvents (服务器→客户端)
+- PromptPayload, PromptResponsePayload
+- ConnectionErrorPayload
+- AuthCredentials
+- TerminalSettings
+重要: Socket 通信的数据合约
+
+📄 /app/types/contracts/v1/sftp.ts
+用途: SFTP 消息类型定义
+包含: 所有 SFTP 操作的请求和响应类型
+
+📄 /app/types/config.ts
+用途: 应用配置类型定义
+包含: Config 接口定义
+
+📄 /app/types/branded.ts
+用途: 品牌化类型（增强类型安全）
+创建: SessionId, ConnectionId, PromptId 等
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 8: 中间件和工具
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/middleware.ts
+用途: Express 中间件管理
+核心函数: applyMiddleware(app, config)
+
+📄 /app/middleware/auth.middleware.ts
+用途: 认证中间件
+
+📄 /app/middleware/session.middleware.ts
+用途: 会话管理中间件
+
+📄 /app/middleware/csrf.middleware.ts
+用途: CSRF 保护中间件
+
+📄 /app/middleware/cookie.middleware.ts
+用途: Cookie 处理中间件
+
+📄 /app/client-path.ts
+用途: 获取前端客户端文件路径
+核心函数: getClientPublicPath()
+返回: webssh2_client 包的公开路径
+
+📄 /app/utils/html-transformer.ts
+用途: HTML 模板配置注入
+核心函数: transformHtml(htmlData, config, basePath)
+功能: 将配置对象注入到 HTML 中（作为 JSON 对象）
+
+📄 /app/constants/
+目录结构:
+- index.ts - 主要常量
+- socket-events.ts - Socket 事件常量
+- validation.ts - 验证消息常量
+- security.ts - 安全相关常量
+- prompt.ts - 提示系统常量
+- terminal.ts - 终端相关常量
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Tier 9: 错误处理和日志
+═════════════════════════════════════════════════════════════════════════════════
+
+📄 /app/errors.ts
+用途: 错误处理主模块
+核心函数: handleError(), createErrorResponse()
+
+📄 /app/errors/webssh2-error.ts
+用途: 基础错误类定义
+
+📄 /app/errors/ssh-connection-error.ts
+用途: SSH 连接错误
+
+📄 /app/logger.ts
+用途: 日志系统
+核心函数: createNamespacedDebug()
+
+📄 /app/logging/
+目录结构:
+- structured-logger.ts - 结构化日志
+- socket-logger.ts - Socket 事件日志
+- syslog-transport.ts - Syslog 传输
+- levels.ts - 日志级别
+
+
+═════════════════════════════════════════════════════════════════════════════════
+参考数据流图
+═════════════════════════════════════════════════════════════════════════════════
+
+HTTP 请求流:
+用户请求 → Express 路由 → routes-v2.ts → connectionHandler.ts
+→ 读取 HTML → html-transformer → 注入配置 → 返回给浏览器
+
+WebSocket 连接流:
+Browser → Socket.IO 连接 → socket-v2.ts → ServiceSocketAdapter
+→ 各子处理器 (auth, terminal, sftp, etc.)
+
+认证流:
+credentials → auth-pipeline → auth-providers → ssh-service.connect()
+→ SSH 连接建立
+
+终端数据流:
+Browser input → 'data' event → ServiceSocketTerminal.handleData()
+→ SSH shell.stdin → SSH server
+→ SSH server output → SSH shell.stdout event
+→ ServiceSocketTerminal → 'data' event → Browser display
+
+
+═════════════════════════════════════════════════════════════════════════════════
+重要配置点
+═════════════════════════════════════════════════════════════════════════════════
+
+Socket.IO 路径:
+- SSH: /socket.io (DEFAULTS.IO_PATH)
+- Telnet: /telnet/socket.io (TELNET_DEFAULTS.IO_PATH)
+
+前端资源路径:
+- SSH: /ssh/assets/*
+- Telnet: /telnet/assets/*
+
+HTTP 路由前缀:
+- SSH: /ssh
+- Telnet: /telnet
+
+Session 存储: Express session 中间件 (ephemeral/db)
+
+认证方法可配置:
+- allowedAuthMethods: string[]  (在配置中定义)

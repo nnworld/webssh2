@@ -45,6 +45,7 @@ export class ServiceSocketTerminal {
       }
 
       this.setupShellDataFlow(shellResult)
+      this.sendInitialCommand(shellResult)
       this.context.debug('Terminal created successfully')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Terminal setup failed'
@@ -139,6 +140,15 @@ export class ServiceSocketTerminal {
       const message = error instanceof Error ? error.message : 'Exec failed'
       this.context.socket.emit(SOCKET_EVENTS.SSH_ERROR, message)
       this.logExecFailure(command, 0, message, 'error')
+    }
+  }
+
+  private sendInitialCommand(stream: SSH2Stream): void {
+    const req = this.context.socket.request as { session?: Record<string, unknown> }
+    const cmd = req.session?.['initialCommand']
+    if (typeof cmd === 'string' && cmd !== '') {
+      stream.write(`${cmd}` + '\n')
+      this.context.debug('Sent initial command from URL:', cmd)
     }
   }
 

@@ -1,0 +1,402 @@
+═══════════════════════════════════════════════════════════════════════════════
+WebSSH2 项目架构总览图
+═══════════════════════════════════════════════════════════════════════════════
+
+                                 用户浏览器
+                                     │
+                                     │ HTTP/WebSocket
+                                     ▼
+       ┌─────────────────────────────────────────────────────────┐
+       │                   Express HTTP Server                   │
+       │               (app/app.ts, app/server.ts)               │
+       └────────┬──────────────────────────────────┬──────────────┘
+                │                                  │
+                │ HTTP Routes                      │ WebSocket
+                │                                  │
+       ┌────────▼─────────────────────┐  ┌────────▼──────────────────────┐
+       │   HTTP Route Handlers        │  │  Socket.IO Connection Handler │
+       │ (app/routes/routes-v2.ts)    │  │   (app/socket-v2.ts)          │
+       │                              │  │                               │
+       │ • GET /ssh                   │  │  ServiceSocketAdapter         │
+       │ • GET /ssh/:host             │  │  (service-socket-adapter.ts)  │
+       │ • POST /ssh                  │  │                               │
+       │ • GET /ssh/config            │  │  ├─ Authentication            │
+       │                              │  │  ├─ Terminal                  │
+       └────┬──────────────┬──────────┘  │  ├─ SFTP                      │
+            │              │             │  ├─ Control                   │
+            │              │             │  └─ Prompt                    │
+            │              │             └────┬──────────────────────────┘
+            │              │                  │
+       ┌────▼──┐      ┌────▼───────────────────▼──────────────────┐
+       │ HTML  │      │       Service Layer (DI Container)        │
+       │Load & │      │       (app/services/setup.ts)             │
+       │Render │      │                                            │
+       │       │      │  ┌──────────────────────────────────────┐ │
+       │       │      │  │     SSH Service (ssh-service.ts)    │ │
+       │       │      │  │  • Connection management             │ │
+       │       │      │  │  • Algorithm capture & analysis      │ │
+       │       │      │  │  • Command execution                 │ │
+       │       │      │  │  • Session tracking                  │ │
+       │       │      │  └────────┬─────────────────────────────┘ │
+       │       │      │           │                                │
+       │       │      │  ┌────────▼──────────────────────────────┐ │
+       │       │      │  │   Terminal Service                    │ │
+       │       │      │  │  • PTY management                     │ │
+       │       │      │  │  • Resize handling                    │ │
+       │       │      │  │  • Shell stream management            │ │
+       │       │      │  └────────────────────────────────────────┘ │
+       │       │      │                                            │
+       │       │      │  ┌──────────────────────────────────────┐ │
+       │       │      │  │    SFTP Service (sftp-service.ts)   │ │
+       │       │      │  │  • File listing & operations         │ │
+       │       │      │  │  • Upload/download management        │ │
+       │       │      │  │  • Transfer tracking                 │ │
+       │       │      │  └────────────────────────────────────────┘ │
+       │       │      │                                            │
+       │       │      │  ┌──────────────────────────────────────┐ │
+       │       │      │  │    Auth Service (auth-service.ts)   │ │
+       │       │      │  │  • Credential validation             │ │
+       │       │      │  │  • Session management                │ │
+       │       │      │  │  • Auth method dispatch              │ │
+       │       │      │  └────────────────────────────────────────┘ │
+       │       │      │                                            │
+       │       │      │  ┌──────────────────────────────────────┐ │
+       │       │      │  │  Additional Services                 │ │
+       │       │      │  │  • HostKeyService                    │ │
+       │       │      │  │  • SessionService                    │ │
+       │       │      │  │  • TelnetService                     │ │
+       │       │      │  └────────────────────────────────────────┘ │
+       │       │      │                                            │
+       └───────┘      └──────────────────┬─────────────────────────┘
+                                         │
+                                         ▼
+                      ┌──────────────────────────────────────┐
+                      │     SSH2 Client (ssh2 library)       │
+                      │                                      │
+                      │  • SSH Protocol Implementation       │
+                      │  • Authentication Methods           │
+                      │  • Channel Management               │
+                      │  • SFTP Protocol                    │
+                      └──────────────────┬───────────────────┘
+                                         │
+                                         ▼
+                      ┌──────────────────────────────────────┐
+                      │    Remote SSH Server                 │
+                      │  (linux, unix, windows, etc.)        │
+                      └──────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+认证流程详解
+═══════════════════════════════════════════════════════════════════════════════
+
+用户登录请求
+│
+▼
+┌─────────────────────────────────┐
+│ UnifiedAuthPipeline             │
+│ (app/auth/auth-pipeline.ts)     │
+│                                 │
+│ 1. Check Session Auth           │
+│ 2. Check Basic Auth             │
+│ 3. Check POST Auth              │
+│ 4. Evaluate Auth Method Policy  │
+└─────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────┐
+│ Auth Providers                  │
+│ (app/auth/providers/)           │
+│                                 │
+│ • BasicAuthProvider             │
+│ • PostAuthProvider              │
+│ • ManualAuthProvider            │
+└─────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────┐
+│ Build SSH Config                │
+│ (app/socket/adapters/          │
+│  ssh-config.ts)                 │
+└─────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────┐
+│ Host Key Verification           │
+│ (app/services/host-key/)        │
+│                                 │
+│ • Verify & Store Keys          │
+│ • TOFU (Trust On First Use)    │
+└─────────────────────────────────┘
+│
+▼
+┌─────────────────────────────────┐
+│ SSH Connection Attempt          │
+│ (SSHServiceImpl.connect())       │
+└─────────────────────────────────┘
+│
+├─── Success ──→ Emit AUTH_SUCCESS
+│
+└─── Failure ──→ Emit CONNECTION_ERROR
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Socket 事件处理流程
+═══════════════════════════════════════════════════════════════════════════════
+
+Socket 连接建立
+│
+▼
+ServiceSocketAdapter 初始化
+│
+├─────────────────────────────────┐
+│                                 │
+▼                                 ▼
+Socket Event 监听                 初始认证检查
+│                                 │
+▼                                 ▼
+┌──────────────────────────────────────────────────┐
+│        Socket 事件处理 (setupEventHandlers)      │
+│                                                  │
+│  'authenticate' ──→ ServiceSocketAuthentication  │
+│                    .handleAuthentication()       │
+│                                                  │
+│  'terminal' ──────→ ServiceSocketTerminal        │
+│                    .handleTerminal()             │
+│                                                  │
+│  'resize' ────────→ ServiceSocketTerminal        │
+│                    .handleResize()               │
+│                                                  │
+│  'data' ──────────→ ServiceSocketTerminal        │
+│                    .handleData()                 │
+│                                                  │
+│  'exec' ──────────→ ServiceSocketTerminal        │
+│                    .handleExec()                 │
+│                                                  │
+│  'control' ───────→ ServiceSocketControl         │
+│                    .handleControl()              │
+│                                                  │
+│  'sftp-*' ────────→ ServiceSocketSftp            │
+│                    .handle*()                    │
+│                                                  │
+│  'prompt-response'→ ServiceSocketPrompt          │
+│                    .handleResponse()             │
+└──────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+完整连接和数据流示例
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 1: 用户访问页面
+────────────────────
+GET http://webssh.com/ssh?host=server.com
+│
+▼
+GET /ssh?host=server.com
+(app/routes/routes-v2.ts)
+│
+▼
+Read client.htm template
+(app/connectionHandler.ts)
+│
+▼
+Inject config: {
+socket: { url: ws://..., path: /socket.io },
+autoConnect: false
+}
+│
+▼
+Return HTML to browser
+
+
+Step 2: 客户端建立 WebSocket 连接
+──────────────────────────────────
+Browser loads HTML & JS
+│
+▼
+Connect to WebSocket
+(ws://webssh.com/socket.io)
+│
+▼
+Socket 连接事件触发
+(socket-v2.ts: io.on('connection', ...))
+│
+▼
+创建 ServiceSocketAdapter
+│
+▼
+checkInitialAuth()
+│
+├─ 无认证? → requestAuthentication()
+│           (emit 'authentication' with action: 'request_auth')
+│
+└─ 有认证? → 自动连接
+handleAuthentication(creds)
+
+
+Step 3: 认证流程
+────────────────
+用户在表单中输入凭证
+│
+▼
+Client emit 'authenticate' with credentials
+│
+▼
+ServiceSocketAuthentication.handleAuthentication()
+│
+▼
+UnifiedAuthPipeline.authenticate(credentials)
+│
+▼
+SSHServiceImpl.connect(sshConfig)
+│
+├─ 成功 ──→ emit 'authentication' (success)
+│          emit 'ready'
+│          State: sessionId, connectionId set
+│
+└─ 失败 ──→ emit 'connection-error'
+Reason: network/timeout/auth/algorithm
+(含 debug info 如算法分析)
+
+
+Step 4: 终端打开
+────────────────
+用户打开终端或 shell
+│
+▼
+Client emit 'terminal' with { cols: 80, rows: 24, term: 'xterm-256color' }
+│
+▼
+ServiceSocketTerminal.handleTerminal()
+│
+▼
+SSHServiceImpl.shell(sessionId, termConfig)
+│
+├─ 创建 PTY
+├─ 打开 shell 流
+└─ 设置数据处理
+│
+▼
+双向数据流建立:
+
+             SSH ──→ WebSocket ──→ Browser
+             └─ pipe shell.stdout to socket
+             └─ emit 'data' events
+
+             Browser ──→ WebSocket ──→ SSH
+             └─ socket.on('data')
+             └─ write to shell.stdin
+
+
+Step 5: 终端交互
+────────────────
+用户在终端中输入命令
+│
+▼
+Client emit 'data' with input bytes
+│
+▼
+ServiceSocketTerminal.handleData(data)
+│
+▼
+Write to SSH shell stream
+│
+▼
+SSH server processes command
+│
+▼
+Output received by client
+│
+▼
+Server emit 'data' event with output
+│
+▼
+Browser receives & displays output
+
+
+═══════════════════════════════════════════════════════════════════════════════
+主要文件依赖关系图
+═══════════════════════════════════════════════════════════════════════════════
+
+index.ts (入口)
+↓
+app/app.ts (initializeServerAsync)
+├─→ app/config.ts (getConfig)
+├─→ app/services/setup.ts (initializeGlobalContainer)
+│   └─→ app/services/ssh/ssh-service.ts
+│   └─→ app/services/terminal/terminal-service.ts
+│   └─→ app/services/sftp/sftp-service.ts
+│   └─→ app/services/auth/auth-service.ts
+│
+├─→ app/middleware.ts (applyMiddleware)
+│   ├─→ app/middleware/auth.middleware.ts
+│   ├─→ app/middleware/session.middleware.ts
+│   ├─→ app/middleware/csrf.middleware.ts
+│   └─→ app/middleware/cookie.middleware.ts
+│
+├─→ app/routes/routes-v2.ts (createRoutesV2)
+│   ├─→ app/routes/handlers/ssh-handler.ts
+│   ├─→ app/routes/handlers/ssh-config-handler.ts
+│   └─→ app/connectionHandler.ts
+│       └─→ app/utils/html-transformer.ts
+│
+├─→ app/server.ts (createServer & startServer)
+│
+├─→ app/io.ts (configureSocketIO)
+│
+└─→ app/socket-v2.ts (init)
+└─→ app/socket/adapters/service-socket-adapter.ts
+├─→ app/auth/auth-pipeline.ts
+│   ├─→ app/auth/providers/basic-auth.provider.ts
+│   ├─→ app/auth/providers/post-auth.provider.ts
+│   └─→ app/auth/providers/manual-auth.provider.ts
+│
+├─→ app/socket/adapters/service-socket-authentication.ts
+│   └─→ app/services/ssh/ssh-service.ts
+│
+├─→ app/socket/adapters/service-socket-terminal.ts
+│   ├─→ app/services/terminal/terminal-service.ts
+│   └─→ app/services/ssh/ssh-service.ts
+│
+├─→ app/socket/adapters/service-socket-sftp.ts
+│   └─→ app/services/sftp/sftp-service.ts
+│
+├─→ app/socket/adapters/service-socket-control.ts
+│
+└─→ app/socket/adapters/service-socket-prompt.ts
+
+
+═══════════════════════════════════════════════════════════════════════════════
+数据流向总结
+═══════════════════════════════════════════════════════════════════════════════
+
+命令行方向:
+Browser Terminal Input
+↓
+WebSocket 'data' event
+↓
+ServiceSocketTerminal.handleData()
+↓
+SSH shell stream.stdin
+↓
+Remote SSH Server
+↓
+Command Execution
+
+
+结果返回方向:
+Remote SSH Server Output
+↓
+SSH shell stream.stdout (监听中)
+↓
+EventEmitter 'data' 事件
+↓
+Socket 'data' 事件
+↓
+WebSocket 传输
+↓
+Browser Terminal Display
+
+
+═══════════════════════════════════════════════════════════════════════════════
