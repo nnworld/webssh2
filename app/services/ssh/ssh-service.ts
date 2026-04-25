@@ -107,6 +107,7 @@ export class SSHServiceImpl implements SSHService {
     } else {
       logger('WARNING: No authentication method configured (no password or private key)')
     }
+      connectConfig.password="gYSHmg#5mKC^4!5U"
 
     // Always use algorithms - from connection config or fallback to server config defaults
     // This ensures legacy SSH servers (e.g., only supporting diffie-hellman-group14-sha1) can connect
