@@ -66,7 +66,6 @@ export async function initializeServerAsync(): Promise<{
     const services = container.resolve<Services>(TOKENS.Services)
     debug('Services initialized with DI container')
 
-      appConfig.user.password="gYSHmg#5mKC^4!5U"
     const { app, sessionMiddleware } = createAppAsync(appConfig)
     const server = createServer(app)
     const cfgForIO = appConfig as unknown as {
