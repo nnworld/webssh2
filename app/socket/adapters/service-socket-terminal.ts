@@ -151,7 +151,6 @@ export class ServiceSocketTerminal {
     if (typeof cmd === 'string' && cmd !== '') {
       stream.write(`${cmd}` + '\n')
       this.context.debug('Sent initial command from URL:', cmd)
-        delete req.session!['initialCommand']
     }
   }
 
@@ -161,7 +160,6 @@ export class ServiceSocketTerminal {
         if (typeof shared === 'string' && shared !== '') {
             stream.write(`tmux attach -t ${shared}` + '\n')
             this.context.debug('Sent shared tmux from param:', shared)
-            delete req.session!['initialSharedTmux']
         }
     }
 
@@ -171,7 +169,6 @@ export class ServiceSocketTerminal {
         if (typeof shared === 'string' && shared !== '') {
             stream.write(`screen -x ${shared}` + '\n')
             this.context.debug('Sent shared screen from param:', shared)
-            delete req.session!['initialSharedScreen']
         }
     }
 
