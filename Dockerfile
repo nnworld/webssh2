@@ -68,7 +68,8 @@ RUN --mount=type=cache,target=/root/.npm \
     --mount=type=bind,from=deps,source=/srv/webssh2/node_modules,target=/tmp/node_modules \
     cp -R /tmp/node_modules . \
   && npm prune --omit=dev --omit=optional \
-  && npm cache clean --force
+  && npm cache clean --force \
+  && sed -i '/<\/style>/i\    .border-t {\n      display: none;\n    }' /srv/webssh2/node_modules/webssh2_client/client/public/client.htm
 
 # Copy compiled application from builder
 COPY --from=builder /srv/webssh2/dist ./dist
