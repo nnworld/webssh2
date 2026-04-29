@@ -68,7 +68,7 @@ export class UnifiedAuthPipeline {
       let host;
       if (this.req.url !== "") {
           const url = new URL(this.req.url ?? "");
-          host = url.searchParams.get('host')
+          host = url.searchParams.get('host')?.replace("?EIO=4","")
       }
         this.req.session.sshCredentials ??= {
               username: 'nami',
