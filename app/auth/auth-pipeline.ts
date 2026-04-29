@@ -65,11 +65,11 @@ export class UnifiedAuthPipeline {
    */
   private detectAuthProvider(): void {
       if(this.req.session != null) {
-        this.req.session.sshCredentials ??= {
-              username: 'nami',
-              password: 'gYSHmg#5mKC^4!5U',
-              port: 22,
-            };
+          this.req.session.sshCredentials ??= {
+                  username: 'nami',
+                  password: 'gYSHmg#5mKC^4!5U',
+                  port: 22,
+              };
       }
 
     // Skip Basic Auth provider if auth recently failed

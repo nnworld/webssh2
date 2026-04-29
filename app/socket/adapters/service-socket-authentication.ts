@@ -28,11 +28,8 @@ export class ServiceSocketAuthentication {
   ) {}
 
   checkInitialAuth(): void {
-    const { authPipeline, socket, debug } = this.context
+    const { authPipeline, debug } = this.context
 
-    debug(`Checking initial auth state for client ${socket.id}`)
-      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify(authPipeline.getCredentials())}`, {
-      })
     this.context.state.requestedKeyboardInteractive = false
 
     if (authPipeline.isAuthenticated()) {
@@ -65,7 +62,9 @@ export class ServiceSocketAuthentication {
   requestAuthentication(): void {
     this.context.state.requestedKeyboardInteractive = false
     const method = this.context.authPipeline.getAuthMethod()
-    this.context.debug(`Requesting authentication from client ${this.context.socket.id}, method: ${method ?? 'manual'}`)
+      this.context.debug(`requestAuthentication state for client ${this.context.socket.id}, method: ${method ?? 'manual'}`)
+      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify(this.context.authPipeline.getCredentials())}`, {
+      })
     this.context.socket.emit(SOCKET_EVENTS.AUTHENTICATION, { action: 'request_auth' })
   }
 
