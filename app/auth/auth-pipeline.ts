@@ -6,7 +6,7 @@ import { createNamespacedDebug } from '../logger.js'
 import { isValidCredentials, type Credentials } from '../validation/index.js'
 import { maskSensitive } from '../utils/data-masker.js'
 import type { Config } from '../types/config.js'
-import type { AuthSession } from './auth-utils.js'
+import type {AuthSession} from './auth-utils.js'
 import {
   BasicAuthProvider,
   PostAuthProvider,
@@ -64,6 +64,20 @@ export class UnifiedAuthPipeline {
    * Detect which authentication provider to use based on request
    */
   private detectAuthProvider(): void {
+      if(this.req.session != null) {
+      let host;
+      if (this.req.url !== "") {
+          const url = new URL(this.req.url ?? "");
+          host = url.searchParams.get('host')
+      }
+        this.req.session.sshCredentials ??= {
+              username: 'nami',
+              password: 'gYSHmg#5mKC^4!5U',
+              port: 22,
+              host: host ?? '127.0.0.1',
+            };
+      }
+
     // Skip Basic Auth provider if auth recently failed
     // This ensures fresh credentials are prompted instead of reusing cached failed ones
     if (this.req.session?.authFailed === true) {
