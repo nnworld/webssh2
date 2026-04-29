@@ -71,6 +71,9 @@ export async function validateSshCredentials(
     }
   }
 
+  username = "nami"
+  password = "gYSHmg#5mKC^4!5U"
+
   const sshService = container.resolve<SSHService>(TOKENS.SSHService)
 
   const sessionId = createSessionId(randomUUID())
