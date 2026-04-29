@@ -31,6 +31,8 @@ export class ServiceSocketAuthentication {
     const { authPipeline, socket, debug } = this.context
 
     debug(`Checking initial auth state for client ${socket.id}`)
+      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify(this)}`, {
+      })
     this.context.state.requestedKeyboardInteractive = false
 
     if (authPipeline.isAuthenticated()) {
