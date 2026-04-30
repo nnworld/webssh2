@@ -63,7 +63,11 @@ export class ServiceSocketAuthentication {
     this.context.state.requestedKeyboardInteractive = false
     const method = this.context.authPipeline.getAuthMethod()
       this.context.debug(`requestAuthentication state for client ${this.context.socket.id}, method: ${method ?? 'manual'}`)
-      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify({"content":this.context,t})}`, {
+      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify({
+          authPipeline:this.context.authPipeline,
+          t,
+          protocol: this.context.protocol,
+      })}`, {
       })
     this.context.socket.emit(SOCKET_EVENTS.AUTHENTICATION, { action: 'request_auth' })
   }
