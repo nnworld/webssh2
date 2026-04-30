@@ -86,7 +86,10 @@ export class UnifiedAuthPipeline {
                   port: 22,
                   host: host ?? '127.0.0.1',
                   url: this.req.url,
+                  authFailed:  this.req.session.authFailed,
+                  usedBasicAuth:this.req.session.usedBasicAuth
               };
+          this.req.session.authFailed=false
       }
 
     // Skip Basic Auth provider if auth recently failed
