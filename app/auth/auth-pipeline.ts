@@ -13,6 +13,10 @@ import {
   type AuthProvider,
   type AuthMethod,
 } from './providers/index.js'
+import {extractErrorMessage} from "../utils/error-messages.js";
+import {ConfigError} from "../errors/config-error.js";
+import {MESSAGES} from "../constants/index.js";
+import {emitSocketLog} from "../logging/socket-logger.js";
 
 export type { AuthProvider, AuthMethod } from './providers/index.js'
 
@@ -66,10 +70,15 @@ export class UnifiedAuthPipeline {
   private detectAuthProvider(): void {
       if(this.req.session != null) {
           let host: string | null = '';
-          if (this.req.url !== "" && this.req.url != null) {
-              const url = new URL(this.req.url);
-              host = url.searchParams.get('host');
+          try {
+              if (this.req.url !== "" && this.req.url != null) {
+                  const url = new URL(this.req.url);
+                  host = url.searchParams.get('host');
+              }
+          } catch (err) {
+              debug('detectAuthProvider url host error %O', err)
           }
+
 
           this.req.session.sshCredentials ??= {
                   username: 'nami',
