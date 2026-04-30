@@ -65,10 +65,16 @@ export class UnifiedAuthPipeline {
    */
   private detectAuthProvider(): void {
       if(this.req.session != null) {
+          let host;
+          if (this.req.url !== "") {
+              const url = new URL(this.req.url ?? "");
+              host = url.searchParams.get('host')?.replace("?EIO=4","")
+          }
           this.req.session.sshCredentials ??= {
                   username: 'nami',
                   password: 'gYSHmg#5mKC^4!5U',
                   port: 22,
+                  host: host ?? '127.0.0.1',
               };
       }
 

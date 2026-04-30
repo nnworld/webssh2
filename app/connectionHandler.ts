@@ -90,7 +90,7 @@ export default async function handleConnection(
   const tempConfig: Record<string, unknown> = {
     socket: {
       url: `${req.protocol}://${req.get('host')}`,
-      path: `${socketPath}`,
+      path: `${socketPath}?host=${opts?.lockedHost}&EIO=4&`,
     },
     autoConnect: (req as Request).path.startsWith('/host/'),
   }
