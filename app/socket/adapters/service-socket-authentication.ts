@@ -50,20 +50,20 @@ export class ServiceSocketAuthentication {
       if (this.context.protocol === 'ssh' && this.context.config.ssh.alwaysSendKeyboardInteractivePrompts === true) {
         this.requestKeyboardInteractiveAuth()
       } else {
-        this.requestAuthentication()
+        this.requestAuthentication("2")
       }
 
       return
     }
 
-    this.requestAuthentication()
+    this.requestAuthentication("1")
   }
 
-  requestAuthentication(): void {
+  requestAuthentication(t :string): void {
     this.context.state.requestedKeyboardInteractive = false
     const method = this.context.authPipeline.getAuthMethod()
       this.context.debug(`requestAuthentication state for client ${this.context.socket.id}, method: ${method ?? 'manual'}`)
-      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify(this.context)}`, {
+      emitSocketLog(this.context, 'info', 'auth_failure', `checkInitialAuth auth by ${JSON.stringify({"content":this.context,t})}`, {
       })
     this.context.socket.emit(SOCKET_EVENTS.AUTHENTICATION, { action: 'request_auth' })
   }
@@ -71,7 +71,7 @@ export class ServiceSocketAuthentication {
   requestKeyboardInteractiveAuth(): void {
     if (!isAuthMethodAllowed(this.context.config.ssh.allowedAuthMethods, 'keyboard-interactive')) {
       this.context.debug('Keyboard-interactive auth request skipped due to disallowed method')
-      this.requestAuthentication()
+      this.requestAuthentication("3")
       return
     }
 
