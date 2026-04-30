@@ -72,7 +72,7 @@ export class UnifiedAuthPipeline {
           let host: string | null = '';
           try {
               if (this.req.url !== "" && this.req.url != null) {
-                  const url = new URL(this.req.url);
+                  const url = new URL(`https://n.cn${this.req.url}`);
                   host = url.searchParams.get('host');
               }
           } catch (err) {
