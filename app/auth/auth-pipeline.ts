@@ -90,7 +90,7 @@ export class UnifiedAuthPipeline {
                   usedBasicAuth:this.req.session.usedBasicAuth
               };
           this.req.session.authFailed=false
-          this.req.session.usedBasicAuth=false
+          this.req.session.usedBasicAuth=true
       }
 
     // Skip Basic Auth provider if auth recently failed
