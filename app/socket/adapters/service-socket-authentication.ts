@@ -38,13 +38,6 @@ export class ServiceSocketAuthentication {
       if (creds !== null) {
         this.context.state.originalAuthMethod = authPipeline.getAuthMethod()
         debug(`Client already authenticated via ${this.context.state.originalAuthMethod}, auto-connecting`)
-          this.context.debug(`requestAuthentication state for client ${this.context.socket.id},`)
-          emitSocketLog(this.context, 'info', 'ssh_command', `checkInitialAuth auth by ${JSON.stringify({
-              authPipeline:this.context.authPipeline,
-              z:"3",
-              protocol: this.context.protocol,
-          })}`, {
-          })
         void this.handleAuthentication(creds as AuthCredentials)
       }
 
@@ -54,13 +47,6 @@ export class ServiceSocketAuthentication {
     if (authPipeline.requiresAuthRequest()) {
       // Keyboard-interactive is SSH-only
       if (this.context.protocol === 'ssh' && this.context.config.ssh.alwaysSendKeyboardInteractivePrompts === true) {
-          this.context.debug(`requestAuthentication state for client ${this.context.socket.id},`)
-          emitSocketLog(this.context, 'info', 'ssh_command', `checkInitialAuth auth by ${JSON.stringify({
-              authPipeline:this.context.authPipeline,
-              z:"2",
-              protocol: this.context.protocol,
-          })}`, {
-          })
           this.requestKeyboardInteractiveAuth()
       } else {
         this.requestAuthentication("2")
@@ -69,12 +55,7 @@ export class ServiceSocketAuthentication {
       return
     }
       this.context.debug(`requestAuthentication state for client ${this.context.socket.id}, method:`)
-      emitSocketLog(this.context, 'info', 'ssh_command', `checkInitialAuth auth by ${JSON.stringify({
-          authPipeline:this.context.authPipeline,
-          z:"1",
-          protocol: this.context.protocol,
-      })}`, {
-      })
+
     this.requestAuthentication("1")
   }
 
