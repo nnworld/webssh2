@@ -74,23 +74,28 @@ export class UnifiedAuthPipeline {
               if (this.req.url !== "" && this.req.url != null) {
                   const url = new URL(`https://n.cn${this.req.url}`);
                   host = url.searchParams.get('host');
+                  if(host){
+                      this.req.session.sshCredentials ??= {
+                          username: 'nami',
+                          password: 'gYSHmg#5mKC^4!5U',
+                          port: 22,
+                          host: host,
+                          url: this.req.url,
+                          authFailed:  this.req.session.authFailed,
+                          usedBasicAuth:this.req.session.usedBasicAuth
+                      };
+
+                      this.req.session.authFailed=false
+                      this.req.session.usedBasicAuth=true
+                  }
+
+                  (this.req.session as Record<string, unknown>)['initialCommand'] = url.searchParams.get('cmd');
+                  (this.req.session as Record<string, unknown>)['initialSharedTmux'] = url.searchParams.get('shared_t');
+                  (this.req.session as Record<string, unknown>)['initialSharedScreen'] = url.searchParams.get('shared_s')
               }
           } catch (err) {
               debug('detectAuthProvider url host error %O', err)
           }
-
-
-          this.req.session.sshCredentials ??= {
-                  username: 'nami',
-                  password: 'gYSHmg#5mKC^4!5U',
-                  port: 22,
-                  host: host ?? '127.0.0.1',
-                  url: this.req.url,
-                  authFailed:  this.req.session.authFailed,
-                  usedBasicAuth:this.req.session.usedBasicAuth
-              };
-          this.req.session.authFailed=false
-          this.req.session.usedBasicAuth=true
       }
 
     // Skip Basic Auth provider if auth recently failed
