@@ -147,28 +147,49 @@ export class ServiceSocketTerminal {
 
   private sendInitialCommand(stream: SSH2Stream): void {
     const req = this.context.socket.request as { session?: Record<string, unknown> }
-    const cmd = req.session?.['initialCommand']
+    let cmd = req.session?.['initialCommand']
     if (typeof cmd === 'string' && cmd !== '') {
       stream.write(`${cmd}` + '\n')
       this.context.debug('Sent initial command from URL:', cmd)
+    }else{
+        const url = new URL(`https://n.cn${this.context.socket.request.url}`);
+        cmd = url.searchParams.get('cmd');
+        if (typeof cmd === 'string' && cmd !== '') {
+            stream.write(`${cmd}` + '\n')
+            this.context.debug('Sent initial command from URL:', cmd)
+        }
     }
   }
 
     private sendInitialSharedTmux(stream: SSH2Stream): void {
         const req = this.context.socket.request as { session?: Record<string, unknown> }
-        const shared = req.session?.['initialSharedTmux']
+        let shared = req.session?.['initialSharedTmux']
         if (typeof shared === 'string' && shared !== '') {
             stream.write(`tmux attach -t ${shared}` + '\n')
             this.context.debug('Sent shared tmux from param:', shared)
+        }else{
+            const url = new URL(`https://n.cn${this.context.socket.request.url}`);
+            shared = url.searchParams.get('shared_t');
+            if (typeof shared === 'string' && shared !== '') {
+                stream.write(`tmux attach -t ${shared}` + '\n')
+                this.context.debug('Sent shared tmux from param:', shared)
+            }
         }
     }
 
     private sendInitialSharedScreen(stream: SSH2Stream): void {
         const req = this.context.socket.request as { session?: Record<string, unknown> }
-        const shared = req.session?.['initialSharedScreen']
+        let shared = req.session?.['initialSharedScreen']
         if (typeof shared === 'string' && shared !== '') {
             stream.write(`screen -x ${shared}` + '\n')
             this.context.debug('Sent shared screen from param:', shared)
+        }else{
+            const url = new URL(`https://n.cn${this.context.socket.request.url}`);
+            shared = url.searchParams.get('shared_s');
+            if (typeof shared === 'string' && shared !== '') {
+                stream.write(`screen -x ${shared}` + '\n')
+                this.context.debug('Sent shared screen from param:', shared)
+            }
         }
     }
 
