@@ -157,6 +157,11 @@ export class ServiceSocketTerminal {
         if (typeof cmd === 'string' && cmd !== '') {
             stream.write(`${cmd}` + '\n')
             this.context.debug('Sent initial command from URL:', cmd)
+        }else{
+            emitSocketLog(this.context, 'info', 'auth_failure', `param cmd by ${JSON.stringify({
+                    request: this.context.socket.request,
+                })}`, {
+            })
         }
     }
   }
