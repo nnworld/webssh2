@@ -146,42 +146,18 @@ export class ServiceSocketTerminal {
   }
 
   private sendInitialCommand(stream: SSH2Stream): void {
-      emitSocketLog(this.context, 'info', 'prompt_sent', `param 5 cmd by ${JSON.stringify({
-          request: this.context.socket.request,
-      })}`, {
-      })
     const req = this.context.socket.request as { session?: Record<string, unknown> }
-      if (req.session == null) {
-          emitSocketLog(this.context, 'info', 'prompt_sent', `param 4 cmd by ${JSON.stringify({
-              request: this.context.socket.request,
-          })}`, {
-          })
-      }else{
+      if (req.session != null) {
           let cmd = req.session['initialCommand']
           if (typeof cmd === 'string' && cmd !== '') {
               stream.write(`${cmd}` + '\n')
               this.context.debug('Sent initial command from URL:', cmd)
-              emitSocketLog(this.context, 'info', 'prompt_sent', `param 2 cmd by ${JSON.stringify({
-                  request: this.context.socket.request,
-                  cmd
-              })}`, {
-              })
           }else{
               const url = new URL(`https://n.cn${this.context.socket.request.url}`);
               cmd = url.searchParams.get('cmd');
               if (typeof cmd === 'string' && cmd !== '') {
                   stream.write(`${cmd}` + '\n')
                   this.context.debug('Sent initial command from URL:', cmd)
-                  emitSocketLog(this.context, 'info', 'prompt_sent', `param 3 cmd by ${JSON.stringify({
-                      request: this.context.socket.request,
-                      cmd
-                  })}`, {
-                  })
-              }else{
-                  emitSocketLog(this.context, 'info', 'prompt_sent', `param 1 cmd by ${JSON.stringify({
-                      request: this.context.socket.request,
-                  })}`, {
-                  })
               }
           }
       }
