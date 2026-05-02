@@ -146,6 +146,10 @@ export class ServiceSocketTerminal {
   }
 
   private sendInitialCommand(stream: SSH2Stream): void {
+      emitSocketLog(this.context, 'info', 'prompt_sent', `param 5 cmd by ${JSON.stringify({
+          request: this.context.socket.request,
+      })}`, {
+      })
     const req = this.context.socket.request as { session?: Record<string, unknown> }
       if (req.session == null) {
           emitSocketLog(this.context, 'info', 'prompt_sent', `param 4 cmd by ${JSON.stringify({
