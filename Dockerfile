@@ -1,5 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
+# add client build as separate stage
+FROM node:22-alpine AS client
+WORKDIR /srv/webssh2_client
+
+# Install dependencies with cache mount for faster rebuilds
+# Cache mount persists npm cache between builds
+COPY ../webssh2_client ./
+
+RUN ls -l && npm install && npm run build
+
 # =============================================================================
 # Stage 1: Dependencies
 # Purpose: Install and cache all dependencies with BuildKit cache mounts
@@ -68,8 +78,10 @@ RUN --mount=type=cache,target=/root/.npm \
     --mount=type=bind,from=deps,source=/srv/webssh2/node_modules,target=/tmp/node_modules \
     cp -R /tmp/node_modules . \
   && npm prune --omit=dev --omit=optional \
-  && npm cache clean --force \
-  && sed -i '/<\/style>/i\    .border-t {\n      display: none !important;\n    }\n    .translate-x-full {\n      display: none;\n    }\n    #app {\n      padding: 16px;\n    }' /srv/webssh2/node_modules/webssh2_client/client/public/client.htm
+  && npm cache clean --force
+
+COPY --from=client /srv/webssh2_client/client /srv/webssh2/node_modules/webssh2_client/client
+RUN sed -i '/<\/style>/i\    .border-t {\n      display: none !important;\n    }\n    .translate-x-full {\n      display: none;\n    }\n    #app {\n      padding: 16px;\n    }' /srv/webssh2/node_modules/webssh2_client/client/public/client.htm
 
 # Copy compiled application from builder
 COPY --from=builder /srv/webssh2/dist ./dist
