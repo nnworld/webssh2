@@ -1,18 +1,21 @@
 # syntax=docker/dockerfile:1.7
 
-# The "22-alpine" tag is intentional alongside the digest: Renovate's
-# matchCurrentValue rule keys on it to gate digest-only auto-merges
-# (see .github/renovate.json). Docker resolves the pull via the digest;
-# the tag is documentation + Renovate metadata. The Sonar rule
-# docker:S8431 is suppressed for this file in sonar-project.properties.
-ARG BASE_IMAGE=node:22-alpine@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f
+# add client build as separate stage
+FROM node:22-alpine AS client
+WORKDIR /srv/webssh2_client
+
+# Install dependencies with cache mount for faster rebuilds
+# Cache mount persists npm cache between builds
+COPY ../webssh2_client ./
+
+RUN ls -l && npm install && npm run build
 
 # =============================================================================
 # Stage 1: Dependencies
 # Purpose: Install and cache all dependencies with BuildKit cache mounts
 # This stage is optimized for layer caching and reuse
 # =============================================================================
-FROM ${BASE_IMAGE} AS deps
+FROM node:22-alpine AS deps
 WORKDIR /srv/webssh2
 
 # Install dependencies with cache mount for faster rebuilds
@@ -29,7 +32,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # Purpose: Compile TypeScript to JavaScript
 # Uses dependencies from deps stage to avoid reinstalling
 # =============================================================================
-FROM ${BASE_IMAGE} AS builder
+FROM node:22-alpine AS builder
 WORKDIR /srv/webssh2
 
 ENV NODE_ENV=development
@@ -53,7 +56,7 @@ RUN npm run build
 # Purpose: Minimal production image with only runtime dependencies
 # Includes tini for proper init system (signal handling, zombie reaping)
 # =============================================================================
-FROM ${BASE_IMAGE} AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /srv/webssh2
 
 # Install tini for proper signal handling and zombie process reaping
@@ -75,8 +78,10 @@ RUN --mount=type=cache,target=/root/.npm \
     --mount=type=bind,from=deps,source=/srv/webssh2/node_modules,target=/tmp/node_modules \
     cp -R /tmp/node_modules . \
   && npm prune --omit=dev --omit=optional \
-  && npm cache clean --force \
-  && sed -i '/<\/style>/i\    .border-t {\n      display: none !important;\n    }\n    .translate-x-full {\n      display: none;\n    }\n    #app {\n      padding: 16px;\n    }' /srv/webssh2/node_modules/webssh2_client/client/public/client.htm
+  && npm cache clean --force
+
+COPY --from=client /srv/webssh2_client/client /srv/webssh2/node_modules/webssh2_client/client
+RUN sed -i '/<\/style>/i\    .border-t {\n      display: none !important;\n    }\n    .translate-x-full {\n      display: none;\n    }\n    #app {\n      padding: 16px;\n    }' /srv/webssh2/node_modules/webssh2_client/client/public/client.htm
 
 # Copy compiled application from builder
 COPY --from=builder /srv/webssh2/dist ./dist
