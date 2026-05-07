@@ -6,7 +6,7 @@ WORKDIR /srv/webssh2_client
 
 # Install dependencies with cache mount for faster rebuilds
 # Cache mount persists npm cache between builds
-COPY ../webssh2_client ./
+COPY webssh2_client ./
 
 RUN ls -l && npm install && npm run build
 
