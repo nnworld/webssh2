@@ -8,6 +8,8 @@ WORKDIR /srv/webssh2_client
 # Cache mount persists npm cache between builds
 COPY webssh2_client ./
 
+RUN apk add --no-cache git
+
 RUN ls -l && npm install && npm run build
 
 # =============================================================================
