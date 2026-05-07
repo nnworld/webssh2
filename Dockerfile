@@ -1,5 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
+# The "22-alpine" tag is intentional alongside the digest: Renovate's
+# matchCurrentValue rule keys on it to gate digest-only auto-merges
+# (see .github/renovate.json). Docker resolves the pull via the digest;
+# the tag is documentation + Renovate metadata. The Sonar rule
+# docker:S8431 is suppressed for this file in sonar-project.properties.
+ARG BASE_IMAGE=node:22-alpine@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f
+
 # add client build as separate stage
 FROM node:22-alpine AS client
 WORKDIR /srv/webssh2_client
